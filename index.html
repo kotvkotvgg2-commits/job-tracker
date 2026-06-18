@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light" data-layout="desktop">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ระบบติดตามงาน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ══ TOKENS ══════════════════════════════════ */
+    :root{
+      --radius:14px;--radius-sm:9px;--radius-pill:99px;
+      --s0-bg:#1e2130;--s0-fg:#8892b0;--s0-border:#2e3555;
+      --s1-bg:#1a2e0e;--s1-fg:#7ecb3f;--s1-border:#2e521a;
+      --s2-bg:#201a06;--s2-fg:#e8b84b;--s2-border:#4a3d10;
+      --s3-bg:#0a1e34;--s3-fg:#4eaaff;--s3-border:#163660;
+      --green:#7ecb3f;--amber:#e8b84b;--blue:#4eaaff;--slate:#8892b0;--red:#e05c5c;
+    }
+    [data-theme="dark"]{
+      --bg:#0d0f18;--surface:#181b28;--surface2:#1e2235;--surface3:#252a40;
+      --border:#2a2f48;--border2:#343a58;
+      --text:#dde2f4;--text-sub:#a0a9c8;--text-muted:#626b8a;
+      --accent:#6c8fff;--accent-dim:#2d3f7a;--accent-glow:rgba(108,143,255,.16);
+      --shadow:rgba(0,0,0,.4);
+    }
+    [data-theme="light"]{
+      --bg:#eef0f8;--surface:#fff;--surface2:#f4f5fc;--surface3:#e8eaf6;
+      --border:#d2d6ee;--border2:#b8c0de;
+      --text:#181b2e;--text-sub:#3a4068;--text-muted:#7880a0;
+      --accent:#3d5fcc;--accent-dim:#c4cefc;--accent-glow:rgba(61,95,204,.1);
+      --shadow:rgba(0,0,0,.08);
+      --s0-bg:#eef0f8;--s0-fg:#5560a0;--s0-border:#c8ccee;
+      --s1-bg:#ecf8e4;--s1-fg:#3a7818;--s1-border:#b0daa0;
+      --s2-bg:#fef8e2;--s2-fg:#8a6010;--s2-border:#e4ce80;
+      --s3-bg:#e2f0fe;--s3-fg:#1a58a8;--s3-border:#94c0f0;
+    }
+
+    /* ══ RESET ═══════════════════════════════════ */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Sarabun',sans-serif;font-size:17px;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s}
+
+    /* ══ WELCOME ════════════════════════════════ */
+    #welcome{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .4s,transform .4s}
+    #welcome.hide{opacity:0;transform:scale(.96);pointer-events:none}
+    .welcome-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 36px;max-width:460px;width:100%;box-shadow:0 24px 64px var(--shadow);text-align:center}
+    .welcome-icon{font-size:2.8rem;margin-bottom:14px}
+    .welcome-box h1{font-size:1.65rem;font-weight:700;margin-bottom:6px}
+    .welcome-box p{font-size:1rem;color:var(--text-muted);margin-bottom:28px;line-height:1.6}
+    .device-choice{display:flex;gap:12px;justify-content:center;margin-bottom:24px}
+    .device-btn{flex:1;max-width:180px;background:var(--surface2);border:2px solid var(--border);border-radius:var(--radius);padding:18px 12px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .device-btn:hover{border-color:var(--accent);background:var(--surface3)}
+    .device-btn.selected{border-color:var(--accent);background:var(--accent-glow)}
+    .device-btn:active{transform:scale(.97)}
+    .device-btn .d-icon{font-size:2rem}
+    .device-btn .d-label{font-size:1rem;font-weight:600;color:var(--text)}
+    .device-btn .d-sub{font-size:0.82rem;color:var(--text-muted)}
+    .btn-start{width:100%;background:var(--accent);border:none;color:#fff;padding:14px;border-radius:var(--radius-sm);font-family:'Sarabun',sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
+    .btn-start:hover{opacity:.88}
+    .btn-start:active{transform:scale(.98)}
+    .btn-start:disabled{opacity:.4;cursor:not-allowed}
+    .welcome-theme{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+    .welcome-theme span{font-size:0.88rem;color:var(--text-muted)}
+
+    /* ══ SETTINGS MODAL ════════════════════════ */
+    #settings-overlay{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:24px}
+    #settings-overlay.open{display:flex}
+    .settings-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 28px 24px;max-width:440px;width:100%;box-shadow:0 24px 64px var(--shadow)}
+    .settings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .settings-header h2{font-size:1.1rem;font-weight:700}
+    .settings-close{background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px;transition:background .15s}
+    .settings-close:hover{background:var(--surface3)}
+    .settings-label{font-size:0.88rem;color:var(--text-muted);display:block;margin-bottom:7px;font-weight:600}
+    .settings-url{width:100%;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;font-family:'IBM Plex Mono',monospace;outline:none;transition:border-color .2s;margin-bottom:12px}
+    .settings-url:focus{border-color:var(--accent)}
+    .btn-settings-save{width:100%;background:var(--accent);border:none;color:#fff;padding:11px;border-radius:var(--radius-sm);font-family:'Sarabun',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .2s}
+    .btn-settings-save:hover{opacity:.88}
+
+    /* ══ MAIN APP ════════════════════════════════ */
+    #app{display:none;padding:16px 14px 80px;max-width:1180px;margin:0 auto}
+    #app.visible{display:block}
+
+    /* ── Topbar ── */
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+    .topbar-left{display:flex;align-items:center;gap:10px}
+    .header-icon{width:42px;height:42px;background:var(--accent-glow);border:1px solid var(--accent-dim);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
+    .header-title{font-size:1.25rem;font-weight:700}
+    .header-sub{font-size:0.82rem;color:var(--text-muted);margin-top:2px}
+    .topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+    /* theme toggle */
+    .theme-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-pill);padding:3px}
+    .theme-btn{background:none;border:none;cursor:pointer;padding:5px 12px;border-radius:var(--radius-pill);font-size:0.88rem;font-family:'Sarabun',sans-serif;color:var(--text-muted);transition:background .2s,color .2s;white-space:nowrap}
+    .theme-btn.active{background:var(--surface3);color:var(--text);font-weight:600}
+
+    /* icon buttons */
+    .btn-icon{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);color:var(--text-sub);padding:8px 14px;border-radius:var(--radius-sm);cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.9rem;font-weight:500;transition:background .2s,transform .1s;white-space:nowrap}
+    .btn-icon:hover{background:var(--surface3)}
+    .btn-icon:active{transform:scale(.97)}
+    .btn-icon:disabled{opacity:.5;cursor:not-allowed}
+    .spinning svg{animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* layout badge — shows CURRENT layout */
+    .layout-badge{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text-sub);padding:6px 12px;border-radius:var(--radius-sm);font-family:'Sarabun',sans-serif;font-size:0.88rem;font-weight:600;white-space:nowrap;user-select:none}
+    .layout-badge .badge-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+    /* ── Summary cards ── */
+    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;transition:transform .2s}
+    .card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+    .card.not-started::before{background:var(--slate)}
+    .card.in-progress::before{background:var(--green)}
+    .card.pending::before{background:var(--amber)}
+    .card.done::before{background:var(--blue)}
+    .card:hover{transform:translateY(-2px)}
+    .card-icon{font-size:1.15rem;margin-bottom:7px;opacity:.8}
+    .card-label{font-size:0.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+    .card-value{font-size:2rem;font-weight:700;line-height:1}
+    .card-sub{font-size:0.78rem;color:var(--text-muted);margin-top:4px}
+    .card.not-started .card-value{color:var(--slate)}
+    .card.in-progress .card-value{color:var(--green)}
+    .card.pending     .card-value{color:var(--amber)}
+    .card.done        .card-value{color:var(--blue)}
+
+    /* ══ DESKTOP TABLE ═══════════════════════════ */
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .table-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .table-title{font-size:0.92rem;font-weight:600;color:var(--text-sub)}
+    .row-count{font-size:0.8rem;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-pill);padding:2px 11px}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    thead th{background:var(--surface2);padding:11px 14px;text-align:left;font-size:0.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
+    thead th:nth-child(1){width:30%}
+    thead th:nth-child(2){width:14%}
+    thead th:nth-child(3){width:10%}
+    thead th:nth-child(4){width:18%}
+    thead th:nth-child(5){width:14%}
+    thead th:nth-child(6){width:14%}
+    tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+    tbody tr:last-child{border-bottom:none}
+    tbody tr:hover{background:var(--surface2)}
+    tbody td{padding:13px 14px;font-size:1rem;vertical-align:middle}
+    .col-code{font-family:'IBM Plex Mono',monospace;font-size:0.88rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .col-name{font-weight:500;word-break:break-word;line-height:1.4;font-size:1rem}
+    .col-center{text-align:center}
+
+    /* status select */
+    .status-select{appearance:none;-webkit-appearance:none;border-radius:var(--radius-pill);padding:6px 30px 6px 13px;font-family:'Sarabun',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;outline:none;border:1.5px solid;transition:box-shadow .2s;background-repeat:no-repeat;background-position:right 10px center;background-size:10px}
+    .status-select:focus{box-shadow:0 0 0 3px var(--accent-glow)}
+    .status-select.s0{background-color:var(--s0-bg);color:var(--s0-fg);border-color:var(--s0-border);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238892b0'/%3E%3C/svg%3E")}
+    .status-select.s1{background-color:var(--s1-bg);color:var(--s1-fg);border-color:var(--s1-border);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237ecb3f'/%3E%3C/svg%3E")}
+    .status-select.s2{background-color:var(--s2-bg);color:var(--s2-fg);border-color:var(--s2-border);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23e8b84b'/%3E%3C/svg%3E")}
+    .status-select.s3{background-color:var(--s3-bg);color:var(--s3-fg);border-color:var(--s3-border);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234eaaff'/%3E%3C/svg%3E")}
+
+    .done-input{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 8px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;text-align:center;width:78px;outline:none;transition:border-color .2s,box-shadow .2s}
+    .done-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+
+    .btn-save{background:var(--accent);border:none;color:#fff;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.92rem;font-weight:700;white-space:nowrap;transition:all .2s;box-shadow:0 2px 8px var(--accent-glow)}
+    .btn-save:hover{opacity:.88}
+    .btn-save:active{transform:scale(.96)}
+    .btn-save:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-save.saved{background:var(--green);box-shadow:0 2px 8px rgba(126,203,63,.3)}
+
+    /* ══ MOBILE CARDS ════════════════════════════ */
+    .mobile-list{display:flex;flex-direction:column;gap:12px}
+    .job-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:border-color .2s}
+    .job-card.dirty-card{border-color:var(--accent-dim)}
+    .job-card-top{margin-bottom:14px}
+    .job-name{font-size:1.1rem;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:3px}
+    .job-code{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text-muted);margin-bottom:3px}
+    .job-target{font-size:0.88rem;color:var(--text-muted)}
+    .job-card-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+    .ctrl-row{display:flex;align-items:center;gap:10px}
+    .ctrl-label{font-size:0.88rem;color:var(--text-muted);font-weight:600;width:72px;flex-shrink:0}
+
+    /* mobile status pills */
+    .status-pills{display:flex;gap:7px;flex-wrap:wrap;flex:1}
+    .status-pill{padding:6px 13px;border-radius:var(--radius-pill);font-size:0.85rem;font-weight:700;border:1.5px solid;cursor:pointer;transition:opacity .15s,transform .1s;background:transparent;font-family:'Sarabun',sans-serif}
+    .status-pill:active{transform:scale(.95)}
+    .status-pill.sp0{color:var(--s0-fg);border-color:var(--s0-border)}
+    .status-pill.sp1{color:var(--s1-fg);border-color:var(--s1-border)}
+    .status-pill.sp2{color:var(--s2-fg);border-color:var(--s2-border)}
+    .status-pill.sp3{color:var(--s3-fg);border-color:var(--s3-border)}
+    .status-pill.sp0.active{background:var(--s0-bg)}
+    .status-pill.sp1.active{background:var(--s1-bg)}
+    .status-pill.sp2.active{background:var(--s2-bg)}
+    .status-pill.sp3.active{background:var(--s3-bg)}
+    .status-pill:not(.active){opacity:.42}
+
+    /* mobile done input */
+    .done-input-m{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:1rem;text-align:center;width:96px;border-radius:var(--radius-sm);outline:none;transition:border-color .2s,box-shadow .2s}
+    .done-input-m:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+
+    /* mobile save button — always colored */
+    .btn-save-m{width:100%;background:var(--accent);border:none;color:#fff;padding:13px;border-radius:var(--radius-sm);cursor:pointer;font-family:'Sarabun',sans-serif;font-size:1rem;font-weight:700;transition:all .2s;box-shadow:0 2px 10px var(--accent-glow)}
+    .btn-save-m:hover{opacity:.88}
+    .btn-save-m:active{transform:scale(.98)}
+    .btn-save-m:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-save-m.saved{background:var(--green);box-shadow:0 2px 8px rgba(126,203,63,.3)}
+
+    /* ══ LOADING / ERROR ═════════════════════════ */
+    #loading,#error-msg{padding:48px;text-align:center;color:var(--text-muted);font-size:1rem}
+    #error-msg{color:var(--red)}
+    .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px}
+
+    /* ══ TOAST ═══════════════════════════════════ */
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);box-shadow:0 8px 28px var(--shadow);color:var(--text);padding:12px 22px;border-radius:var(--radius);font-size:0.95rem;font-weight:500;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;white-space:nowrap}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toast-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+    #toast.error .toast-dot{background:var(--red)}
+
+    /* ══ RESPONSIVE ══════════════════════════════ */
+    @media(max-width:640px){
+      .summary{grid-template-columns:repeat(2,1fr)}
+      .card{padding:13px 15px}
+      .card-value{font-size:1.7rem}
+    }
+
+    /* layout visibility */
+    [data-layout="desktop"] .mobile-list{display:none}
+    [data-layout="desktop"] .table-wrap{display:block}
+    [data-layout="mobile"]  .table-wrap{display:none}
+    [data-layout="mobile"]  .mobile-list{display:flex}
+  </style>
+</head>
+<body>
+
+<!-- ══ WELCOME ════════════════════════════════ -->
+<div id="welcome">
+  <div class="welcome-box">
+    <div class="welcome-icon">📋</div>
+    <h1>ระบบติดตามงาน</h1>
+    <p>เลือกรูปแบบการแสดงผล<br>แล้วกด เริ่มใช้งาน ได้เลย</p>
+    <div class="device-choice">
+      <button class="device-btn" id="btn-desktop" onclick="selectDevice('desktop')">
+        <span class="d-icon">🖥️</span>
+        <span class="d-label">คอมพิวเตอร์</span>
+        <span class="d-sub">แสดงแบบตาราง</span>
+      </button>
+      <button class="device-btn" id="btn-mobile" onclick="selectDevice('mobile')">
+        <span class="d-icon">📱</span>
+        <span class="d-label">มือถือ</span>
+        <span class="d-sub">แสดงแบบ Card</span>
+      </button>
+    </div>
+    <button class="btn-start" id="btn-start" onclick="startApp()" disabled>เริ่มใช้งาน →</button>
+    <div class="welcome-theme">
+      <span>ธีม:</span>
+      <div class="theme-toggle">
+        <button class="theme-btn" id="w-btn-dark"  onclick="setTheme('dark')">🌙 มืด</button>
+        <button class="theme-btn active" id="w-btn-light" onclick="setTheme('light')">☀️ สว่าง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ════════════════════════ -->
+<div id="settings-overlay">
+  <div class="settings-box">
+    <div class="settings-header">
+      <h2>⚙️ ตั้งค่า</h2>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <label class="settings-label">Apps Script URL</label>
+    <input id="settings-url" class="settings-url" type="text" placeholder="https://script.google.com/macros/s/…/exec"/>
+    <button class="btn-settings-save" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ════════════════════════════════ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="header-icon">📋</div>
+      <div>
+        <div class="header-title">ระบบติดตามงาน</div>
+        <div class="header-sub" id="last-update">ยังไม่ได้โหลดข้อมูล</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="theme-toggle">
+        <button class="theme-btn" id="btn-dark"  onclick="setTheme('dark')">🌙 มืด</button>
+        <button class="theme-btn" id="btn-light" onclick="setTheme('light')">☀️ สว่าง</button>
+      </div>
+      <!-- badge shows CURRENT layout -->
+      <div class="layout-badge" id="layout-badge">
+        <span class="badge-dot"></span>
+        <span id="layout-badge-text">คอมพิวเตอร์</span>
+      </div>
+      <!-- toggle button -->
+      <button class="btn-icon" id="layout-btn" onclick="toggleLayout()">
+        <span id="layout-icon">📱</span>
+        <span id="layout-label">สลับมือถือ</span>
+      </button>
+      <button class="btn-icon" onclick="openSettings()">⚙️ ตั้งค่า</button>
+      <button class="btn-icon" id="refresh-btn" onclick="loadData()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        รีเฟรช
+      </button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="card not-started"><div class="card-icon">⏸️</div><div class="card-label">ยังไม่เริ่ม</div><div class="card-value" id="cnt-0">–</div><div class="card-sub" id="sub-0">&nbsp;</div></div>
+    <div class="card in-progress"><div class="card-icon">⚙️</div><div class="card-label">กำลังทำ</div><div class="card-value" id="cnt-1">–</div><div class="card-sub" id="sub-1">&nbsp;</div></div>
+    <div class="card pending"><div class="card-icon">🔍</div><div class="card-label">รอตรวจ</div><div class="card-value" id="cnt-2">–</div><div class="card-sub" id="sub-2">&nbsp;</div></div>
+    <div class="card done"><div class="card-icon">✅</div><div class="card-label">เสร็จสิ้น</div><div class="card-value" id="cnt-3">–</div><div class="card-sub" id="sub-3">&nbsp;</div></div>
+  </div>
+
+  <div id="loading" style="display:none;"><div class="spinner"></div><p>กำลังโหลดข้อมูล…</p></div>
+  <div id="error-msg" style="display:none;"></div>
+
+  <!-- Desktop -->
+  <div class="table-wrap" id="table-wrap" style="display:none;">
+    <div class="table-header">
+      <span class="table-title">รายการงานทั้งหมด</span>
+      <span class="row-count" id="row-count">0 รายการ</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>ชื่องาน</th><th>รหัส</th><th class="col-center">จำนวน</th>
+          <th>สถานะ</th><th class="col-center">ทำแล้ว (ชิ้น)</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Mobile -->
+  <div class="mobile-list" id="mobile-list" style="display:none;"></div>
+</div>
+
+<div id="toast"><span class="toast-dot"></span><span id="toast-text"></span></div>
+
+<script>
+  const STATUS_LIST  = ["ยังไม่เริ่ม","กำลังทำ","รอตรวจ","เสร็จสิ้น"];
+  const STATUS_CLASS = ["s0","s1","s2","s3"];
+  const STATUS_EMOJI = ["⏸️","⚙️","🔍","✅"];
+
+  // ── ถ้าเปิดผ่าน Google Drive แล้ว URL หาย ให้วาง URL ตรงนี้ได้เลย ──
+  const HARDCODED_URL = "https://script.google.com/macros/s/AKfycbzBadaYp3XGjM2toBVAcV0cQwelTARHgYzq2t7mUzO8yEaOhkWgwcI83ivAkPu1oGgw/exec"; // ← ใส่ URL Apps Script ของคุณที่นี่ เช่น "https://script.google.com/macros/s/xxx/exec"
+
+  let SCRIPT_URL   = HARDCODED_URL || localStorage.getItem("scriptUrl") || "";
+  let LAYOUT       = localStorage.getItem("layout") || "desktop";
+  let deviceChosen = false;
+
+  /* ── init theme immediately ─── */
+  (()=>{ applyTheme(localStorage.getItem("theme")||"light"); })();
+
+  /* ── Welcome ──────────────────── */
+  function selectDevice(d){
+    deviceChosen=true; LAYOUT=d;
+    document.getElementById("btn-desktop").classList.toggle("selected",d==="desktop");
+    document.getElementById("btn-mobile").classList.toggle("selected",d==="mobile");
+    document.getElementById("btn-start").disabled=false;
+  }
+
+  function startApp(){
+    localStorage.setItem("layout",LAYOUT);
+    applyLayout(LAYOUT);
+    hideWelcome();
+    // if no URL yet, open settings immediately
+    if(!SCRIPT_URL){ openSettings(); } else { loadData(); }
+  }
+
+  window.onload=()=>{
+    // auto-detect mobile
+    if(window.innerWidth<768 && !localStorage.getItem("layout")) LAYOUT="mobile";
+
+    if(SCRIPT_URL && localStorage.getItem("layout")){
+      // returning user — skip welcome
+      applyLayout(LAYOUT);
+      hideWelcome();
+      loadData();
+    } else {
+      // new user หรือเปิดผ่าน Google Drive (localStorage ว่าง)
+      // ถ้ามี HARDCODED_URL ข้ามไปเลย แค่ให้เลือก layout
+      if(HARDCODED_URL) {
+        SCRIPT_URL = HARDCODED_URL;
+      }
+      // auto-select device by screen size
+      if(window.innerWidth<768) selectDevice("mobile");
+      else selectDevice("desktop");
+      // ถ้ามี URL อยู่แล้ว ให้ปุ่มเริ่มใช้งานกดได้เลย
+      if(SCRIPT_URL) document.getElementById("btn-start").disabled = false;
+    }
+  };
+
+  function hideWelcome(){
+    const w=document.getElementById("welcome");
+    w.classList.add("hide");
+    setTimeout(()=>w.style.display="none",400);
+    document.getElementById("app").classList.add("visible");
+  }
+
+  /* ── Theme ────────────────────── */
+  function setTheme(t){
+    applyTheme(t);
+    localStorage.setItem("theme",t);
+  }
+  function applyTheme(t){
+    document.documentElement.setAttribute("data-theme",t);
+    ["btn-dark","btn-light","w-btn-dark","w-btn-light"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      const isDark=id.includes("dark");
+      el.classList.toggle("active",(t==="dark"&&isDark)||(t==="light"&&!isDark));
+    });
+  }
+
+  /* ── Layout ───────────────────── */
+  function applyLayout(l){
+    LAYOUT=l;
+    document.documentElement.setAttribute("data-layout",l);
+    const isMobile=l==="mobile";
+    // badge = current state
+    document.getElementById("layout-badge-text").textContent=isMobile?"มือถือ (Card)":"คอมพิวเตอร์ (ตาราง)";
+    // toggle button = what you'll switch TO
+    document.getElementById("layout-icon").textContent=isMobile?"🖥️":"📱";
+    document.getElementById("layout-label").textContent=isMobile?"สลับคอม":"สลับมือถือ";
+  }
+
+  function toggleLayout(){
+    const next=LAYOUT==="desktop"?"mobile":"desktop";
+    applyLayout(next);
+    localStorage.setItem("layout",next);
+    if(window._lastData){ renderDesktop(window._lastData); renderMobile(window._lastData); showContent(); }
+  }
+
+  /* ── Settings modal ───────────── */
+  function openSettings(){
+    document.getElementById("settings-url").value=SCRIPT_URL||"";
+    document.getElementById("settings-overlay").classList.add("open");
+  }
+  function closeSettings(){
+    document.getElementById("settings-overlay").classList.remove("open");
+  }
+  function saveSettings(){
+    const val=document.getElementById("settings-url").value.trim();
+    if(!val.startsWith("https://")){ showToast("URL ไม่ถูกต้อง",true); return; }
+    SCRIPT_URL=val;
+    localStorage.setItem("scriptUrl",SCRIPT_URL);
+    closeSettings();
+    showToast("บันทึกการตั้งค่าแล้ว!");
+    loadData();
+  }
+  // close on backdrop click
+  document.getElementById("settings-overlay").addEventListener("click",e=>{
+    if(e.target===document.getElementById("settings-overlay")) closeSettings();
+  });
+
+  /* ── Load data ────────────────── */
+  async function loadData(){
+    if(!SCRIPT_URL){ showToast("กรุณาตั้งค่า URL ก่อน",true); return; }
+    setLoading(true);
+    const btn=document.getElementById("refresh-btn");
+    btn.disabled=true; btn.classList.add("spinning");
+    try{
+      const res=await fetch(`${SCRIPT_URL}?action=getData`);
+      const json=await res.json();
+      if(!json.success) throw new Error(json.error);
+      window._lastData=json.data;
+      renderDesktop(json.data);
+      renderMobile(json.data);
+      updateSummary(json.data);
+      showContent();
+      document.getElementById("last-update").textContent="อัปเดตล่าสุด: "+new Date().toLocaleTimeString("th-TH");
+    }catch(e){ showError("โหลดข้อมูลไม่สำเร็จ: "+e.message); }
+    finally{ setLoading(false); btn.disabled=false; btn.classList.remove("spinning"); }
+  }
+
+  /* ── Desktop render ───────────── */
+  function renderDesktop(rows){
+    const tbody=document.getElementById("tbody");
+    tbody.innerHTML="";
+    document.getElementById("row-count").textContent=rows.length+" รายการ";
+    rows.forEach(row=>{
+      const si=Math.max(0,STATUS_LIST.indexOf(row.status));
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td class="col-name">${esc(row.name)}</td>
+        <td class="col-code">${esc(row.code)}</td>
+        <td class="col-center">${row.target}</td>
+        <td><select class="status-select ${STATUS_CLASS[si]}" id="status-${row.rowIndex}" onchange="onStatusChange(${row.rowIndex},this)">
+          ${STATUS_LIST.map((s,i)=>`<option value="${s}"${i===si?" selected":""}>${s}</option>`).join("")}
+        </select></td>
+        <td class="col-center"><input class="done-input" type="number" id="done-${row.rowIndex}" value="${row.doneCount}" min="0" max="${row.target||9999}" oninput="onDoneChange(${row.rowIndex})"/></td>
+        <td><button class="btn-save" id="btn-${row.rowIndex}" onclick="saveRow(${row.rowIndex})">บันทึก</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  /* ── Mobile render ────────────── */
+  function renderMobile(rows){
+    const list=document.getElementById("mobile-list");
+    list.innerHTML="";
+    rows.forEach(row=>{
+      const si=Math.max(0,STATUS_LIST.indexOf(row.status));
+      const div=document.createElement("div");
+      div.className="job-card"; div.id=`mcard-${row.rowIndex}`;
+      const pillsHtml=STATUS_LIST.map((s,i)=>
+        `<button class="status-pill sp${i}${i===si?" active":""}" onclick="onMobileStatus(${row.rowIndex},${i})">${STATUS_EMOJI[i]} ${s}</button>`
+      ).join("");
+      div.innerHTML=`
+        <div class="job-card-top">
+          <div class="job-name">${esc(row.name)}</div>
+          <div class="job-code">${esc(row.code)}</div>
+          <div class="job-target">จำนวน: ${row.target} ชิ้น</div>
+        </div>
+        <div class="job-card-controls">
+          <div class="ctrl-row">
+            <span class="ctrl-label">สถานะ</span>
+            <div class="status-pills" id="mpills-${row.rowIndex}">${pillsHtml}</div>
+          </div>
+          <div class="ctrl-row">
+            <span class="ctrl-label">ทำแล้ว</span>
+            <input class="done-input-m" type="number" id="mdone-${row.rowIndex}" value="${row.doneCount}" min="0" max="${row.target||9999}" oninput="markMDirty(${row.rowIndex})"/>
+          </div>
+        </div>
+        <button class="btn-save-m" id="mbtn-${row.rowIndex}" onclick="saveRowM(${row.rowIndex})">บันทึก</button>`;
+      div._si=si;
+      list.appendChild(div);
+    });
+  }
+
+  /* ── Mobile interactions ──────── */
+  function onMobileStatus(rowIndex,newSi){
+    document.getElementById(`mpills-${rowIndex}`).querySelectorAll(".status-pill").forEach((p,i)=>p.classList.toggle("active",i===newSi));
+    document.getElementById(`mcard-${rowIndex}`)._si=newSi;
+    markMDirty(rowIndex);
+  }
+  function markMDirty(rowIndex){
+    const btn=document.getElementById(`mbtn-${rowIndex}`);
+    btn.className="btn-save-m"; btn.textContent="บันทึก"; btn.disabled=false;
+    document.getElementById(`mcard-${rowIndex}`).classList.add("dirty-card");
+  }
+  async function saveRowM(rowIndex){
+    const btn=document.getElementById(`mbtn-${rowIndex}`);
+    const card=document.getElementById(`mcard-${rowIndex}`);
+    const status=STATUS_LIST[card._si??0];
+    const done=parseInt(document.getElementById(`mdone-${rowIndex}`).value)||0;
+    btn.disabled=true; btn.textContent="กำลังบันทึก…";
+    try{
+      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",rowIndex,status,doneCount:done})});
+      const json=await res.json();
+      if(!json.success) throw new Error(json.error);
+      btn.className="btn-save-m saved"; btn.textContent="✓ บันทึกแล้ว";
+      card.classList.remove("dirty-card");
+      showToast("บันทึกสำเร็จ!"); setTimeout(()=>loadData(),600);
+    }catch(e){ btn.disabled=false; btn.className="btn-save-m"; btn.textContent="บันทึก"; showToast("บันทึกไม่สำเร็จ: "+e.message,true); }
+  }
+
+  /* ── Desktop interactions ─────── */
+  function onStatusChange(rowIndex,sel){
+    const si=STATUS_LIST.indexOf(sel.value);
+    sel.className="status-select "+STATUS_CLASS[Math.max(0,si)];
+    markDirty(rowIndex);
+  }
+  function onDoneChange(rowIndex){ markDirty(rowIndex); }
+  function markDirty(rowIndex){
+    const btn=document.getElementById(`btn-${rowIndex}`);
+    btn.className="btn-save"; btn.textContent="บันทึก"; btn.disabled=false;
+  }
+  async function saveRow(rowIndex){
+    const btn=document.getElementById(`btn-${rowIndex}`);
+    const status=document.getElementById(`status-${rowIndex}`).value;
+    const done=parseInt(document.getElementById(`done-${rowIndex}`).value)||0;
+    btn.disabled=true; btn.textContent="กำลังบันทึก…";
+    try{
+      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",rowIndex,status,doneCount:done})});
+      const json=await res.json();
+      if(!json.success) throw new Error(json.error);
+      btn.className="btn-save saved"; btn.textContent="✓ บันทึกแล้ว";
+      showToast("บันทึกสำเร็จ!"); setTimeout(()=>loadData(),600);
+    }catch(e){ btn.disabled=false; btn.className="btn-save"; btn.textContent="บันทึก"; showToast("บันทึกไม่สำเร็จ: "+e.message,true); }
+  }
+
+  /* ── Summary ──────────────────── */
+  function updateSummary(rows){
+    const counts=[0,0,0,0],totals=[0,0,0,0];
+    rows.forEach(r=>{ const i=STATUS_LIST.indexOf(r.status); if(i>=0){counts[i]++;totals[i]+=Number(r.doneCount)||0;} });
+    counts.forEach((c,i)=>{ document.getElementById(`cnt-${i}`).textContent=c; document.getElementById(`sub-${i}`).textContent=totals[i]?totals[i]+" ชิ้น":"\u00a0"; });
+  }
+
+  /* ── Helpers ──────────────────── */
+  function showContent(){
+    document.getElementById("table-wrap").style.removeProperty("display");
+    document.getElementById("mobile-list").style.removeProperty("display");
+    document.getElementById("loading").style.display="none";
+    document.getElementById("error-msg").style.display="none";
+  }
+  function setLoading(on){
+    document.getElementById("loading").style.display=on?"block":"none";
+    if(on){ document.getElementById("table-wrap").style.display="none"; document.getElementById("mobile-list").style.display="none"; }
+    else showContent();
+    document.getElementById("error-msg").style.display="none";
+  }
+  function showError(msg){
+    document.getElementById("error-msg").textContent=msg;
+    document.getElementById("error-msg").style.display="block";
+    document.getElementById("table-wrap").style.display="none";
+    document.getElementById("mobile-list").style.display="none";
+  }
+  function showToast(msg,isErr=false){
+    const t=document.getElementById("toast");
+    document.getElementById("toast-text").textContent=msg;
+    t.className="show"+(isErr?" error":"");
+    clearTimeout(t._t); t._t=setTimeout(()=>t.className="",2800);
+  }
+  function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+</script>
+</body>
+</html>
