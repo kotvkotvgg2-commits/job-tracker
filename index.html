@@ -241,6 +241,11 @@
     .log-time{font-size:0.78rem;color:var(--text-muted)}
     .log-loading{text-align:center;color:var(--text-muted);padding:24px;font-size:0.95rem}
 
+    /* ── Duplicate warning ── */
+    #dup-warning{display:none;max-width:1180px;margin:0 auto 14px;background:#fff3cd;border:1.5px solid #e8b84b;border-radius:var(--radius-sm);padding:12px 16px;font-size:0.92rem;color:#7a5c00;line-height:1.5}
+    [data-theme="dark"] #dup-warning{background:#2a2200;color:#e8b84b;border-color:#4a3d10}
+    #dup-warning strong{font-weight:700}
+
     /* ══ RESPONSIVE ══════════════════════════════ */
     @media(max-width:640px){
       .summary{grid-template-columns:repeat(2,1fr)}
@@ -339,6 +344,9 @@
     <div class="card done"><div class="card-icon">✅</div><div class="card-label">เสร็จสิ้น</div><div class="card-value" id="cnt-3">–</div><div class="card-sub" id="sub-3">&nbsp;</div></div>
   </div>
 
+  <!-- Duplicate ID warning -->
+  <div id="dup-warning"></div>
+
   <div id="loading" style="display:none;"><div class="spinner"></div><p>กำลังโหลดข้อมูล…</p></div>
   <div id="error-msg" style="display:none;"></div>
 
@@ -387,7 +395,7 @@
   const STATUS_EMOJI = ["⏸️","⚙️","🔍","✅"];
 
   // ── ถ้าเปิดผ่าน Google Drive แล้ว URL หาย ให้วาง URL ตรงนี้ได้เลย ──
-  const HARDCODED_URL = "https://script.google.com/macros/s/AKfycbzSCrTgjVhAWJkQg-_eghT28I3NkVh03smMUMogMMK5IXb39h4rvuq2gzSeCMjSrWIL/exec"; // ← ใส่ URL Apps Script ของคุณที่นี่ เช่น "https://script.google.com/macros/s/xxx/exec"
+  const HARDCODED_URL = "https://script.google.com/macros/s/AKfycbycFqpFTliVc-o7bg5847tnUEBhb5kMT04oEZ4L7I-nBxUoFyOyxIE0xgZc_7cWUrO9/exec"; // ← ใส่ URL Apps Script ของคุณที่นี่ เช่น "https://script.google.com/macros/s/xxx/exec"
 
   let SCRIPT_URL   = HARDCODED_URL || localStorage.getItem("scriptUrl") || "";
   let LAYOUT       = localStorage.getItem("layout") || "desktop";
@@ -514,6 +522,8 @@
       renderMobile(json.data);
       updateSummary(json.data);
       showContent();
+      // แสดงเตือน ID ซ้ำ
+      showDupWarning(json.duplicates || []);
       document.getElementById("last-update").textContent="อัปเดตล่าสุด: "+new Date().toLocaleTimeString("th-TH");
     }catch(e){ showError("โหลดข้อมูลไม่สำเร็จ: "+e.message); }
     finally{ setLoading(false); btn.disabled=false; btn.classList.remove("spinning"); }
@@ -709,6 +719,16 @@
   }
 
   /* ── Helpers ──────────────────── */
+  function showDupWarning(dups){
+    const el = document.getElementById("dup-warning");
+    if(!dups || dups.length===0){
+      el.style.display="none";
+      return;
+    }
+    el.style.display="block";
+    el.innerHTML=`⚠️ <strong>พบ ID ซ้ำใน Sheet!</strong> กรุณาแก้ไขก่อนใช้งาน: <strong>${dups.map(esc).join(", ")}</strong><br><span style="font-size:0.82rem">การบันทึกข้อมูลอาจไม่ถูกต้องถ้ายังมี ID ซ้ำอยู่</span>`;
+  }
+
   function showContent(){
     document.getElementById("table-wrap").style.removeProperty("display");
     document.getElementById("mobile-list").style.removeProperty("display");
