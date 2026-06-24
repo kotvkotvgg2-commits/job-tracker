@@ -129,14 +129,15 @@
     .row-count{font-size:0.8rem;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-pill);padding:2px 11px}
     table{width:100%;border-collapse:collapse;table-layout:fixed}
     thead th{background:var(--surface2);padding:13px 14px;text-align:left;font-size:0.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
-    thead th:nth-child(1){width:24%}
-    thead th:nth-child(2){width:12%}
-    thead th:nth-child(3){width:8%}
-    thead th:nth-child(4){width:16%}
-    thead th:nth-child(5){width:11%}
+    thead th:nth-child(1){width:18%}
+    thead th:nth-child(2){width:10%}
+    thead th:nth-child(3){width:7%}
+    thead th:nth-child(4){width:15%}
+    thead th:nth-child(5){width:14%}
     thead th:nth-child(6){width:10%}
-    thead th:nth-child(7){width:10%}
-    thead th:nth-child(8){width:9%}
+    thead th:nth-child(7){width:9%}
+    thead th:nth-child(8){width:8%}
+    thead th:nth-child(9){width:9%}
     tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
     tbody tr:last-child{border-bottom:none}
     tbody tr:hover{background:var(--surface2)}
@@ -242,6 +243,13 @@
     .log-done{font-size:1rem;color:var(--text-sub);font-family:'IBM Plex Mono',monospace}
     .log-time{font-size:0.92rem;color:var(--text-muted)}
     .log-loading{text-align:center;color:var(--text-muted);padding:24px;font-size:0.95rem}
+    /* machine select */
+    .machine-select-wrap{position:relative;display:inline-block}
+    .machine-select{appearance:none;-webkit-appearance:none;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:6px 28px 6px 10px;font-family:'Sarabun',sans-serif;font-size:0.95rem;outline:none;cursor:pointer;transition:border-color .2s;background-repeat:no-repeat;background-position:right 8px center;background-size:10px;width:100%}
+    .machine-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+    [data-theme="light"] .machine-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23000'/%3E%3C/svg%3E")}
+    [data-theme="dark"]  .machine-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23fff'/%3E%3C/svg%3E")}
+
     /* delete job button */
     .btn-del-job{background:none;border:1.5px solid var(--red);color:var(--red);padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;font-family:'Sarabun',sans-serif;font-size:0.9rem;font-weight:600;transition:all .2s;white-space:nowrap}
     .btn-del-job:hover{background:rgba(224,92,92,.1)}
@@ -372,7 +380,7 @@
       <thead>
         <tr>
           <th>ชื่องาน</th><th>รหัส</th><th class="col-center">จำนวน</th>
-          <th>สถานะ</th><th class="col-center">ทำแล้ว (ชิ้น)</th><th></th><th></th><th></th>
+          <th>เครื่อง</th><th>สถานะ</th><th class="col-center">ทำแล้ว (ชิ้น)</th><th></th><th></th><th></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -407,9 +415,10 @@
   const STATUS_EMOJI = ["⏸️","⚙️","🔍","✅"];
 
   // ── ถ้าเปิดผ่าน Google Drive แล้ว URL หาย ให้วาง URL ตรงนี้ได้เลย ──
-  const HARDCODED_URL = "https://script.google.com/macros/s/AKfycbz8xvWHVIvaeqWNsWF7RIUD2p1NM-c22GW6sljzBukrC_SkGg3KYvNBo6xC6F58gXXC/exec"; // ← ใส่ URL Apps Script ของคุณที่นี่ เช่น "https://script.google.com/macros/s/xxx/exec"
+  const HARDCODED_URL = "https://script.google.com/macros/s/AKfycbyE8cTazvbwRKzrRiLbhTDvS5GdMsYFzGAwuRfcSwqQzuU-_64PNP5_aW51iKaTkbVW/exec"; // ← ใส่ URL Apps Script ของคุณที่นี่ เช่น "https://script.google.com/macros/s/xxx/exec"
 
   let SCRIPT_URL   = HARDCODED_URL || localStorage.getItem("scriptUrl") || "";
+  let MACHINES = []; // รายชื่อเครื่องดึงจาก Sheet
   let LAYOUT       = localStorage.getItem("layout") || "desktop";
   let deviceChosen = false;
 
@@ -530,11 +539,11 @@
       const json=await res.json();
       if(!json.success) throw new Error(json.error);
       window._lastData=json.data;
+      MACHINES = json.machines || [];
       renderDesktop(json.data);
       renderMobile(json.data);
       updateSummary(json.data);
       showContent();
-      // แสดงเตือน ID ซ้ำ
       showDupWarning(json.duplicates || []);
       document.getElementById("last-update").textContent="อัปเดตล่าสุด: "+new Date().toLocaleTimeString("th-TH");
     }catch(e){ showError("โหลดข้อมูลไม่สำเร็จ: "+e.message); }
@@ -550,10 +559,15 @@
       const si=Math.max(0,STATUS_LIST.indexOf(row.status));
       const tr=document.createElement("tr");
       const jid = esc(row.jobId);
+      const machOpts = MACHINES.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
       tr.innerHTML=`
         <td class="col-name">${esc(row.name)}</td>
         <td class="col-code">${esc(row.code)}</td>
         <td class="col-center">${row.target}</td>
+        <td><div class="machine-select-wrap"><select class="machine-select" id="mach-${jid}" onchange="onMachineChange('${jid}',this)">
+          <option value="">-- เลือกเครื่อง --</option>
+          ${machOpts}
+        </select></div></td>
         <td><select class="status-select ${STATUS_CLASS[si]}" id="status-${jid}" onchange="onStatusChange('${jid}',this)">
           ${STATUS_LIST.map((s,i)=>`<option value="${s}"${i===si?" selected":""}>${s}</option>`).join("")}
         </select></td>
@@ -562,6 +576,12 @@
         <td><button class="btn-icon" style="font-size:0.8rem;padding:5px 10px" onclick="openLog('${jid}','${esc(row.name)}')">📋 ประวัติ</button></td>
         <td><button class="btn-del-job" id="delbtn-${jid}" onclick="startDeleteJob('${jid}','${esc(row.name)}',false)">🗑️ ลบ</button></td>`;
       tbody.appendChild(tr);
+      // set current machine value
+      const ms=document.getElementById(`mach-${jid}`);
+      if(ms&&row.machine){
+        const opt=[...ms.options].find(o=>o.value===row.machine);
+        if(opt){ms.value=row.machine;}
+      }
     });
   }
 
@@ -574,6 +594,7 @@
       const div=document.createElement("div");
       div.className="job-card"; div.id=`mcard-${esc(row.jobId)}`;
       const mjid = esc(row.jobId);
+      const machOptsM = MACHINES.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
       const pillsHtml=STATUS_LIST.map((s,i)=>
         `<button class="status-pill sp${i}${i===si?" active":""}" onclick="onMobileStatus('${mjid}',${i})">${STATUS_EMOJI[i]} ${s}</button>`
       ).join("");
@@ -587,6 +608,15 @@
           <div class="job-target">จำนวน: ${row.target} ชิ้น</div>
         </div>
         <div class="job-card-controls">
+<div class="ctrl-row">
+            <span class="ctrl-label">เครื่อง</span>
+            <div style="flex:1">
+              <select class="machine-select" id="mmach-${mjid}" onchange="onMMachineChange('${mjid}',this)">
+                <option value="">-- เลือกเครื่อง --</option>
+                ${machOptsM}
+              </select>
+            </div>
+          </div>
           <div class="ctrl-row">
             <span class="ctrl-label">สถานะ</span>
             <div class="status-pills" id="mpills-${mjid}">${pillsHtml}</div>
@@ -599,9 +629,20 @@
         <button class="btn-save-m" id="mbtn-${mjid}" onclick="saveRowM('${mjid}')">บันทึก</button>
         <button class="btn-icon" style="width:100%;justify-content:center;margin-top:8px;font-size:0.88rem" onclick="openLog('${mjid}','${esc(row.name)}')">📋 ดูประวัติการแก้ไข</button>`;
       div._si=si;
+      // set machine value mobile
+      const mms=document.getElementById(`mmach-${esc(row.jobId)}`);
+      if(mms&&row.machine){
+        const mopt=[...mms.options].find(o=>o.value===row.machine);
+        if(mopt){mms.value=row.machine;}
+      }
       list.appendChild(div);
     });
   }
+
+  /* ── Machine select ──────────────────────── */
+  function onMachineChange(jobId, sel){ markDirty(jobId); }
+  function onMachineDirty(jobId){ markDirty(jobId); }
+  function onMMachineChange(jobId, sel){ markMDirty(jobId); }
 
   /* ── Mobile interactions ──────── */
   function onMobileStatus(jobId,newSi){
@@ -621,9 +662,11 @@
     const doneValM=document.getElementById(`mdone-${jobId}`).value;
     const done=doneValM===""?0:Number(doneValM);
     if(isNaN(done)||done<0){showToast("จำนวนที่ทำแล้วไม่ถูกต้อง",true);return;}
+    const mmSel=document.getElementById(`mmach-${jobId}`);
+    const machine=mmSel?mmSel.value:"";
     btn.disabled=true; btn.textContent="กำลังบันทึก…";
     try{
-      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",jobId,status,doneCount:done})});
+      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",jobId,status,doneCount:done,machine})});
       if(!res.ok) throw new Error("เซิร์ฟเวอร์ตอบกลับ: "+res.status);
       const json=await res.json();
       if(!json.success) throw new Error(json.error);
@@ -650,9 +693,11 @@
     const doneVal=document.getElementById(`done-${jobId}`).value;
     const done=doneVal===""?0:Number(doneVal);
     if(isNaN(done)||done<0){showToast("จำนวนที่ทำแล้วไม่ถูกต้อง",true);return;}
+    const machSel=document.getElementById(`mach-${jobId}`);
+    const machine=machSel?machSel.value:"";
     btn.disabled=true; btn.textContent="กำลังบันทึก…";
     try{
-      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",jobId,status,doneCount:done})});
+      const res=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateRow",jobId,status,doneCount:done,machine})});
       if(!res.ok) throw new Error("เซิร์ฟเวอร์ตอบกลับ: "+res.status);
       const json=await res.json();
       if(!json.success) throw new Error(json.error);
@@ -781,6 +826,7 @@
           <div class="log-status-row">
             <span class="log-status-badge ${STATUS_CLASS[s]}">${STATUS_EMOJI[s]} ${esc(l.status)}</span>
             <span class="log-done">ทำแล้ว: ${l.doneCount} ชิ้น</span>
+            ${l.machine?`<span class="log-done">🔧 ${esc(l.machine)}</span>`:''}
           </div>
           <div class="log-time">🕐 ${formatThaiDate(l.timestamp)}</div>
         </div>
